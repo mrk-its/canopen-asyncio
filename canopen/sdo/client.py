@@ -138,7 +138,7 @@ class SdoClient(SdoBase):
                     raise
                 logger.warning(str(e))
 
-    async def arequest_response(self, sdo_request):
+    async def arequest_response(self, sdo_request, segmented=False):
         retries_left = self.MAX_RETRIES
         while True:
             await self.asend_request(sdo_request)
@@ -151,6 +151,8 @@ class SdoClient(SdoBase):
                     self.abort(0x5040000)
                     raise
                 logger.warning(str(e))
+                if segmented:
+                    sdo_request[0] ^= TOGGLE_BIT
 
     def abort(self, abort_code=0x08000000):
         """Abort current transfer."""
@@ -611,7 +613,13 @@ class AReadableStream(io_async.RawIOBase):
         command |= self._toggle
         request = bytearray(8)
         request[0] = command
-        response = await self.sdo_client.arequest_response(request)
+
+        t_before = request[0] & TOGGLE_BIT
+        response = await self.sdo_client.arequest_response(request, segmented=True)
+        t_after = request[0] & TOGGLE_BIT
+        if t_before != t_after:
+            self._toggle ^= TOGGLE_BIT
+
         res_command, = struct.unpack_from("B", response)
         if res_command & 0xE0 != RESPONSE_SEGMENT_UPLOAD:
             raise SdoCommunicationError("Unexpected response 0x%02X" % res_command)
@@ -868,7 +876,13 @@ class AWritableStream(io_async.RawIOBase):
             command |= (7 - bytes_sent) << 1
             request[0] = command
             request[1:bytes_sent + 1] = b[0:bytes_sent]
-            response = await self.sdo_client.arequest_response(request)
+
+            t_before = request[0] & TOGGLE_BIT
+            response = await self.sdo_client.arequest_response(request, segmented=True)
+            t_after = request[0] & TOGGLE_BIT
+            if t_before != t_after:
+                self._toggle ^= TOGGLE_BIT
+
             res_command, = struct.unpack("B", response[0:1])
             if res_command & 0xE0 != RESPONSE_SEGMENT_DOWNLOAD:
                 raise SdoCommunicationError(
