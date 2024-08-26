@@ -188,13 +188,13 @@ class SdoVariable(variable.Variable):
     async def aget_data(self) -> bytes:
         return await self.sdo_node.aupload(self.od.index, self.od.subindex)
 
-    def set_data(self, data: bytes):
+    def set_data(self, data: bytes, block_transfer=False):
         force_segment = self.od.data_type == objectdictionary.DOMAIN
-        self.sdo_node.download(self.od.index, self.od.subindex, data, force_segment)
+        self.sdo_node.download(self.od.index, self.od.subindex, data, force_segment, block_transfer=block_transfer)
 
-    async def aset_data(self, data: bytes):
+    async def aset_data(self, data: bytes, block_transfer=False):
         force_segment = self.od.data_type == objectdictionary.DOMAIN
-        await self.sdo_node.adownload(self.od.index, self.od.subindex, data, force_segment)
+        await self.sdo_node.adownload(self.od.index, self.od.subindex, data, force_segment, block_transfer=block_transfer)
 
     @property
     def writable(self) -> bool:

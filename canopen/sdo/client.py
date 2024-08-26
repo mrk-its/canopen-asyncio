@@ -158,6 +158,7 @@ class SdoClient(SdoBase):
         subindex: int,
         data: bytes,
         force_segment: bool = False,
+        block_transfer: bool = False,
     ) -> None:
         """May be called to make a write operation without an Object Dictionary.
 
@@ -176,7 +177,7 @@ class SdoClient(SdoBase):
             When node responds with an error.
         """
         with self.open(index, subindex, "wb", buffering=7, size=len(data),
-                       force_segment=force_segment) as fp:
+                       force_segment=force_segment, block_transfer=block_transfer) as fp:
             fp.write(data)
 
     async def adownload(
@@ -185,13 +186,14 @@ class SdoClient(SdoBase):
         subindex: int,
         data: bytes,
         force_segment: bool = False,
+        block_transfer: bool = False
     ) -> None:
         """May be called to make a write operation without an Object Dictionary.
            Async version.
         """
         async with self.lock:  # Ensure only one active SDO request per channel
             # Deferring to thread because there are sleeps in the call chain
-            return await asyncio.to_thread(self.download, index, subindex, data, force_segment)
+            return await asyncio.to_thread(self.download, index, subindex, data, force_segment, block_transfer)
 
     def open(self, index, subindex=0, mode="rb", encoding="ascii",
              buffering=1024, size=None, block_transfer=False, force_segment=False, request_crc_support=True):
