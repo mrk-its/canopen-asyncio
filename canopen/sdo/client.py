@@ -483,7 +483,7 @@ class BlockUploadStream(io.RawIOBase):
     #: Total size of data or ``None`` if not specified
     size = None
 
-    blksize = 127
+    blksize = 64
 
     crc_supported = False
 
