@@ -506,7 +506,7 @@ class BlockUploadStream(io.RawIOBase):
         self._ackseq = 0
         self._error = False
 
-        logger.debug("Reading 0x%04X:%02X from node %d", index, subindex,
+        logger.info("Reading 0x%04X:%02X from node %d", index, subindex,
                      sdo_client.rx_cobid - 0x600)
         # Initiate Block Upload
         request = bytearray(8)
@@ -530,7 +530,7 @@ class BlockUploadStream(io.RawIOBase):
                 "on the same SDO channel?")
         if res_command & BLOCK_SIZE_SPECIFIED:
             self.size, = struct.unpack_from("<L", response, 4)
-            logger.debug("Size is %d bytes", self.size)
+            logger.info("Size is %d bytes", self.size)
         self.crc_supported = bool(res_command & CRC_SUPPORTED)
         # Start upload
         request = bytearray(8)
@@ -678,7 +678,7 @@ class BlockDownloadStream(io.RawIOBase):
         request = bytearray(8)
         logger.info("Initiating block download for 0x%04X:%02X", index, subindex)
         if size is not None:
-            logger.debug("Expected size of data is %d bytes", size)
+            logger.info("Expected size of data is %d bytes", size)
             command |= BLOCK_SIZE_SPECIFIED
             struct.pack_into("<L", request, 4, size)
         else:
@@ -698,7 +698,7 @@ class BlockDownloadStream(io.RawIOBase):
                 "maybe there is another SDO client communicating "
                 "on the same SDO channel?")
         self._blksize, = struct.unpack_from("B", response, 4)
-        logger.debug("Server requested a block size of %d", self._blksize)
+        logger.info("Server requested a block size of %d", self._blksize)
         self.crc_supported = bool(res_command & CRC_SUPPORTED)
 
     def write(self, b):
@@ -784,8 +784,8 @@ class BlockDownloadStream(io.RawIOBase):
             return
         # Clear the current block buffer
         self._current_block = []
-        logger.debug("All %d sequences were received successfully", ackseq)
-        logger.debug("Server requested a block size of %d", blksize)
+        logger.info("All %d sequences were received successfully", ackseq)
+        logger.info("Server requested a block size of %d", blksize)
         self._blksize = blksize
         self._seqno = 0
 
@@ -825,7 +825,7 @@ class BlockDownloadStream(io.RawIOBase):
         if self.crc_supported:
             # Add CRC
             struct.pack_into("<H", request, 1, self._crc.final())
-        logger.debug("Ending block transfer...")
+        logger.info("Ending block transfer...")
         response = self.sdo_client.request_response(request)
         res_command, = struct.unpack_from("B", response)
         if not res_command & END_BLOCK_TRANSFER:
