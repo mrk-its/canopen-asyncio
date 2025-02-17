@@ -713,7 +713,7 @@ class BlockDownloadStream(io.RawIOBase):
             Number of bytes successfully sent or ``None`` if length of data is
             less than 7 bytes and the total size has not been reached yet.
         """
-        if self._done:
+        if self._done and not self._retransmitting:
             raise RuntimeError("All expected data has already been transmitted")
         # Can send up to 7 bytes at a time
         data = b[0:7]
@@ -796,8 +796,9 @@ class BlockDownloadStream(io.RawIOBase):
         # Sub blocks betwen ackseq and end of corrupted block need to be resent
         # Get the part of the block to resend
         block = self._current_block[ackseq:]
+        assert block, "nothing to retransmit"
         # Go back to correct position in stream
-        self.pos = self.pos - (len(block) * 7)
+        self.pos = self.pos - (len(block) - 1) * 7 - ((self.pos % 7) or 7)
         # Reset the _current_block before starting the retransmission
         self._current_block = []
         # Reset _seqno and update blksize
@@ -829,6 +830,7 @@ class BlockDownloadStream(io.RawIOBase):
         response = self.sdo_client.request_response(request)
         res_command, = struct.unpack_from("B", response)
         if not res_command & END_BLOCK_TRANSFER:
+            self.sdo_client.abort()
             raise SdoCommunicationError("Block download unsuccessful")
         logger.info("Block download successful")
 
