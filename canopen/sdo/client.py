@@ -286,10 +286,12 @@ class ReadableStream(io.RawIOBase):
         res_data = response[4:8]
 
         if res_command & 0xE0 != RESPONSE_UPLOAD:
+            self.sdo_client.abort()
             raise SdoCommunicationError(f"Unexpected response 0x{res_command:02X}")
 
         # Check that the message is for us
         if res_index != index or res_subindex != subindex:
+            self.sdo_client.abort()
             raise SdoCommunicationError(
                 f"Node returned a value for {pretty_index(res_index, res_subindex)} instead, "
                 "maybe there is another SDO client communicating "
@@ -334,8 +336,10 @@ class ReadableStream(io.RawIOBase):
         response = self.sdo_client.request_response(request)
         res_command, = struct.unpack_from("B", response)
         if res_command & 0xE0 != RESPONSE_SEGMENT_UPLOAD:
+            self.sdo_client.abort()
             raise SdoCommunicationError(f"Unexpected response 0x{res_command:02X}")
         if res_command & TOGGLE_BIT != self._toggle:
+            self.sdo_client.abort(0x05030000)
             raise SdoCommunicationError("Toggle bit mismatch")
         length = 7 - ((res_command >> 1) & 0x7)
         if res_command & NO_MORE_DATA:
@@ -394,6 +398,7 @@ class WritableStream(io.RawIOBase):
             response = sdo_client.request_response(request)
             res_command, = struct.unpack_from("B", response)
             if res_command != RESPONSE_DOWNLOAD:
+                self.sdo_client.abort()
                 raise SdoCommunicationError(
                     f"Unexpected response 0x{res_command:02X}")
         else:
@@ -422,6 +427,7 @@ class WritableStream(io.RawIOBase):
             response = self.sdo_client.request_response(request)
             res_command, = struct.unpack_from("B", response)
             if res_command & 0xE0 != RESPONSE_DOWNLOAD:
+                self.sdo_client.abort()
                 raise SdoCommunicationError(
                     f"Unexpected response 0x{res_command:02X}")
             bytes_sent = len(b)
@@ -446,6 +452,7 @@ class WritableStream(io.RawIOBase):
             response = self.sdo_client.request_response(request)
             res_command, = struct.unpack("B", response[0:1])
             if res_command & 0xE0 != RESPONSE_SEGMENT_DOWNLOAD:
+                self.sdo_client.abort()
                 raise SdoCommunicationError(
                     f"Unexpected response 0x{res_command:02X} "
                     f"(expected 0x{RESPONSE_SEGMENT_DOWNLOAD:02X})")
@@ -524,6 +531,7 @@ class BlockUploadStream(io.RawIOBase):
         # Check that the message is for us
         if res_index != index or res_subindex != subindex:
             self._error = True
+            self.sdo_client.abort()
             raise SdoCommunicationError(
                 f"Node returned a value for {pretty_index(res_index, res_subindex)} instead, "
                 "maybe there is another SDO client communicating "
