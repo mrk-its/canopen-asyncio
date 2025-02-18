@@ -513,7 +513,7 @@ class BlockUploadStream(io.RawIOBase):
         self._ackseq = 0
         self._error = False
 
-        logger.info("Reading 0x%04X:%02X from node %d", index, subindex,
+        logger.debug("Reading 0x%04X:%02X from node %d", index, subindex,
                      sdo_client.rx_cobid - 0x600)
         # Initiate Block Upload
         request = bytearray(8)
@@ -538,7 +538,7 @@ class BlockUploadStream(io.RawIOBase):
                 "on the same SDO channel?")
         if res_command & BLOCK_SIZE_SPECIFIED:
             self.size, = struct.unpack_from("<L", response, 4)
-            logger.info("Size is %d bytes", self.size)
+            logger.debug("Size is %d bytes", self.size)
         self.crc_supported = bool(res_command & CRC_SUPPORTED)
         # Start upload
         request = bytearray(8)
@@ -586,7 +586,7 @@ class BlockUploadStream(io.RawIOBase):
                     self._error = True
                     self.sdo_client.abort(0x05040004)
                     raise SdoCommunicationError("CRC is not OK")
-                logger.info("CRC is OK")
+                logger.debug("CRC is OK")
         self.pos += len(data)
         return data
 
@@ -792,14 +792,16 @@ class BlockDownloadStream(io.RawIOBase):
             return
         # Clear the current block buffer
         self._current_block = []
-        logger.info("All %d sequences were received successfully", ackseq)
-        logger.info("Server requested a block size of %d", blksize)
+        logger.debug("All %d sequences were received successfully", ackseq)
+        logger.debug("Server requested a block size of %d", blksize)
+        if self.size:
+            logger.info("sent %s of %s bytes (%.1f%%)", self.pos, self.size, 100.0 * self.pos / self.size)
         self._blksize = blksize
         self._seqno = 0
 
     def _retransmit(self, ackseq, blksize):
         """Retransmit the failed block"""
-        logger.info("%d of %d sequences were received. "
+        logger.debug("%d of %d sequences were received. "
                     "Will start retransmission", ackseq, self._blksize)
         # Sub blocks betwen ackseq and end of corrupted block need to be resent
         # Get the part of the block to resend
