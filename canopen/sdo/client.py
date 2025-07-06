@@ -256,6 +256,13 @@ class SdoClient(SdoBase):
                                     line_buffering=line_buffering)
         return buffered_stream
 
+    progress_cb = None
+
+    def progress(self, pos, size):
+        logger.info("sent %s of %s bytes (%.1f%%)", pos, size, 100.0 * pos / size)
+        if self.progress_cb:
+            self.progress_cb(pos, size)
+
 
 class ReadableStream(io.RawIOBase):
     """File like object for reading from a variable."""
@@ -795,7 +802,8 @@ class BlockDownloadStream(io.RawIOBase):
         logger.debug("All %d sequences were received successfully", ackseq)
         logger.debug("Server requested a block size of %d", blksize)
         if self.size:
-            logger.info("sent %s of %s bytes (%.1f%%)", self.pos, self.size, 100.0 * self.pos / self.size)
+            self.sdo_client.progress(self.pos, self.size)
+
         self._blksize = blksize
         self._seqno = 0
 
